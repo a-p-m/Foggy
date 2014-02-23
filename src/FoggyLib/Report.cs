@@ -88,7 +88,7 @@ namespace FoggyLib
 		public string Usage()
 		{
 			System.Text.StringBuilder sb = new StringBuilder();
-			sb.AppendLine("foggy.rex");
+			sb.AppendLine("foggy.");
 			sb.AppendLine(" FOGGY is an interactive productivity tool designed to assist");
 			sb.AppendLine(" in the composition of monthly reports, project plans, memos to");
 			sb.AppendLine(" management and so forth.  If entered without parameters,");

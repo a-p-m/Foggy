@@ -2,7 +2,6 @@
 <project name="Foggy" default="test" xmlns="http://nant.sf.net/schemas/nant.xsd">
 	<property name="build.dir" value="build" />
   <property name="configuration" value="AutomatedDebug" />
-	<!--<property name="nant.settings.currentframework" value="net-3.5" />-->
 
 	<!-- User targets -->
 	<target name="clean" description="Delete Automated Build artifacts">
