@@ -1,20 +1,34 @@
 <?xml version="1.0" ?>
-<project name="Foggy" default="test" xmlns="http://nant.sf.net/schemas/nant.xsd">
+<project name="Foggy" default="full" xmlns="http://nant.sf.net/schemas/nant.xsd">
+	<property name="basename" value="Foggy" />
 	<property name="build.dir" value="build" />
-  <property name="configuration" value="AutomatedDebug" />
+    <property name="configuration" value="AutomatedRelease" />
+	<property name="MSBuildPath" value="C:\Windows\Microsoft.NET\Framework\v4.0.30319\MSBuild.exe"/>    
 
 	<!-- User targets -->
 	<target name="clean" description="Delete Automated Build artifacts">
-		<delete dir="${build.dir}" if="${directory::exists(build.dir)}"/>
+		<delete dir="${build.dir}\${configuration}" if="${directory::exists(build.dir)}"/>
 	</target>
 
 	<target name="compile" description="Compiles using the AutomatedDebug Configuration">
-		<msbuild project="src\Foggy.sln">
+		<msbuild project="src\${basename}.sln">
 			<property name="Configuration" value="${configuration}" />
 		</msbuild>
 	</target>
 
-	<target name="test" depends="compile, run-unit-tests" 
+	<target name="build">
+		<exec program="${MSBuildPath}">
+			<arg line='"src/${basename}.sln"' />
+			<arg line="/property:Configuration=${configuration}" />
+			<arg line='/property:Platform="Any CPU"' />
+			<arg value="/target:Rebuild" />
+			<arg value="/verbosity:normal" />
+			<arg value="/nologo" />
+<!--			<arg line='/logger:"C:\Program Files\CruiseControl.NET\server\ThoughtWorks.CruiseControl.MsBuild.dll"'/> -->
+		</exec>
+	</target>
+
+	<target name="test" depends="build" 
 		description="Compile and Run Tests" />
 		
 	<target name="full" depends="clean, test, dist"	description="Compiles, tests, and produces distributions" />
@@ -34,12 +48,12 @@
 	
 	<target name="dist">
 		<copy todir="${build.dir}\dist\${configuration}">
-			<fileset basedir="${build.dir}\${configuration}\Foggy">
+			<fileset basedir="${build.dir}\${configuration}\${basename}">
 				<include name="**\*"/>
 				<exclude name="**\*.pdb" />
 			</fileset>
 		</copy>
-		<zip zipfile="${build.dir}\Foggy.${configuration}.zip">
+		<zip zipfile="${build.dir}\${basename}.${configuration}.zip">
 			<fileset basedir="${build.dir}\dist\${configuration}">
 				<include name="**\*" />
 			</fileset>
