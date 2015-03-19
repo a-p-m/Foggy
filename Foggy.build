@@ -10,13 +10,37 @@
 		<delete dir="${build.dir}\${configuration}" if="${directory::exists(build.dir)}"/>
 	</target>
 
-	<target name="compile" description="Compiles using the AutomatedDebug Configuration">
+<!--	<target name="compile" description="Compiles using the AutomatedDebug Configuration">
 		<msbuild project="src\${basename}.sln">
 			<property name="Configuration" value="${configuration}" />
 		</msbuild>
-	</target>
+	</target> -->
 
-	<target name="build">
+	<target name="makeInfo" depends="incrementVersionNumber">
+		<asminfo output="src\${basename}\Properties\AssemblyInfo.cs" language="CSharp">
+			<imports>
+				<import namespace="System.Reflection" />
+				<import namespace="System.Runtime.CompilerServices" />
+				<import namespace="System.Runtime.InteropServices" />
+			</imports>
+			<attributes>
+				<attribute type="AssemblyTitleAttribute" value="${basename}" />
+				<attribute type="AssemblyDescriptionAttribute" value="" />
+				<attribute type="AssemblyConfigurationAttribute" value="" />
+				<attribute type="AssemblyCompanyAttribute" value="Andrew Madden" />
+				<attribute type="AssemblyProductAttribute" value="${basename}" />
+				<attribute type="AssemblyCopyrightAttribute" value="Copyright (c) Andrew Madden, 2014" />
+				<attribute type="AssemblyTrademarkAttribute" value="" />
+				<attribute type="AssemblyCultureAttribute" value="" />
+				<attribute type="ComVisibleAttribute" value="false" />
+				<!-- The GuidAttribute will need to be changed for each project... -->
+				<attribute type="GuidAttribute" value="2fe6c9b3-f3c0-4606-880a-375e00610146" />
+				<attribute type="AssemblyVersionAttribute" value="${buildnumber.version}" />
+			</attributes>
+		</asminfo>
+	</target>
+	
+	<target name="build" depends="makeInfo">
 		<exec program="${MSBuildPath}">
 			<arg line='"src/${basename}.sln"' />
 			<arg line="/property:Configuration=${configuration}" />
@@ -53,11 +77,22 @@
 				<exclude name="**\*.pdb" />
 			</fileset>
 		</copy>
-		<zip zipfile="${build.dir}\${basename}.${configuration}.zip">
+		<zip zipfile="${build.dir}\${basename}-${buildnumber.major}.${buildnumber.minor}.${buildnumber.build}.${configuration}.zip">
 			<fileset basedir="${build.dir}\dist\${configuration}">
 				<include name="**\*" />
 			</fileset>
 		</zip>
+	</target>
+	
+	<!-- Internal targets -->
+	<target name="incrementVersionNumber">
+		<version buildtype="Increment"></version>
+		<echo>Setting Version number to ${buildnumber.version}</echo>
+	</target>
+	
+	<target name="getVersionNumber">
+		<version buildtype="NoIncrement"></version>
+		<echo>Setting Version number to ${buildnumber.version}</echo>
 	</target>
 	
 </project>
