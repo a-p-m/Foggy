@@ -22,3 +22,4 @@ tools/MbUnit/MbUnit.GUI.exe
 tools/MbUnit/MbUnit.Framework.dll
 tools/MbUnit/MbUnit.Cons.exe.config
 build/Foggy.AutomatedRelease.zip
+build/Foggy-*.zip

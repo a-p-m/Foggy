@@ -1,9 +1,33 @@
 <?xml version="1.0" ?>
 <project name="Foggy" default="full" xmlns="http://nant.sf.net/schemas/nant.xsd">
 	<property name="basename" value="Foggy" />
+	<property name="MSBuildPath" value="C:\Windows\Microsoft.NET\Framework\v4.0.30319\MSBuild.exe"/>    
+	<property name="dropLocation" value="\\LANTH\Source\Distro" />
+	<property name="toolpath" value="D:\Dev\Bin\" />
+
+	<!-- Overridable settings (e.g. for Release build, etc. -->
 	<property name="build.dir" value="build" />
     <property name="configuration" value="AutomatedRelease" />
-	<property name="MSBuildPath" value="C:\Windows\Microsoft.NET\Framework\v4.0.30319\MSBuild.exe"/>    
+
+	<!--
+		To customize this build script
+		1.	set the basename to the name of the project
+		2.	update the zipfile name for the relevant version
+			(This will require a little more thought)
+		
+	ASSUMPTIONS
+	===========
+		It is assumed that the solution is in the src/${basename} folder and called ${basename}.sln. If this
+		is not the case, then you will have to adjust the location in the compile target.
+		
+	Normal Targets
+	====== =======
+		The targets are normally
+			full      -	this is a full compile and creates a distribution zip file, but no installer
+			all       -	This is a compile with an installer deployed to the drop location
+			transport -	This is to move the project from one dev location to another.
+	
+	-->
 
 	<!-- User targets -->
 	<target name="clean" description="Delete Automated Build artifacts">
@@ -52,11 +76,40 @@
 		</exec>
 	</target>
 
+	<target name="all" depends="clean, test, dist, makeInstaller, deployInstaller" description="compiles, tests and produces distributions">
+	</target>
+	
 	<target name="test" depends="build" 
 		description="Compile and Run Tests" />
 		
 	<target name="full" depends="clean, test, dist"	description="Compiles, tests, and produces distributions" />
 
+	<target name="dist" depends="distclean" description="Clean up distribution area" >
+		<version buildtype="NoIncrement" />
+		<copy todir="${build.dir}\dist\${configuration}">
+			<fileset basedir="${build.dir}\${configuration}">
+				<include name="**\*"/>
+				<exclude name="**\*.pdb" />
+			</fileset>
+		</copy>
+		<zip zipfile="${build.dir}\${basename}-${buildnumber.major}.${buildnumber.minor}.${buildnumber.build}.x86.${configuration}.zip">
+			<fileset basedir="${build.dir}\dist\${configuration}">
+				<include name="**\*" />
+			</fileset>
+		</zip>
+	</target>
+	
+	<target name="distclean" description="Clean the results of a distribution build">
+		<echo>Deleting ${build.dir}\dist</echo>
+		<delete dir="${build.dir}\dist" if="${directory::exists(build.dir)}"/>
+		<echo>Deleting ${build.dir}\${basename}-*.${configuration}.zip</echo>
+		<delete>
+			<fileset>
+				<include name="${build.dir}\${basename}-*.${configuration}.zip" />
+			</fileset>
+		</delete>
+	</target>
+	
 	<!-- Internal targets -->
 	<target name="run-unit-tests">
 		<mkdir dir="${build.dir}\test-reports" />
@@ -70,20 +123,6 @@
 		</exec>
 	</target>
 	
-	<target name="dist">
-		<copy todir="${build.dir}\dist\${configuration}">
-			<fileset basedir="${build.dir}\${configuration}\${basename}">
-				<include name="**\*"/>
-				<exclude name="**\*.pdb" />
-			</fileset>
-		</copy>
-		<zip zipfile="${build.dir}\${basename}-${buildnumber.major}.${buildnumber.minor}.${buildnumber.build}.${configuration}.zip">
-			<fileset basedir="${build.dir}\dist\${configuration}">
-				<include name="**\*" />
-			</fileset>
-		</zip>
-	</target>
-	
 	<!-- Internal targets -->
 	<target name="incrementVersionNumber">
 		<version buildtype="Increment"></version>
@@ -95,5 +134,57 @@
 		<echo>Setting Version number to ${buildnumber.version}</echo>
 	</target>
 	
+	<target name="copyDistToTemplate" description="Copy the files from the distribution area to the template before the installer is made." >
+		<copy todir="${build.dir}\Expenses_Template\ExpensesPortable\App\Expenses">
+			<fileset basedir="${build.dir}\${configuration}">
+				<include name="**\*"/>
+				<exclude name="**\*.pdb" />
+				<!--<exclude name="**\*.config" />-->
+			</fileset>
+		</copy>
+		<xmlpoke 
+			file="${build.dir}\Expenses_Template\ExpensesPortable\App\Expenses\Expenses.exe.config" 
+			xpath="/configuration/connectionStrings/add/@connectionString"
+			value="Data Source=Data\Expenses.s3db" />
+	</target>
+	
+	<target name="makeInstaller" depends="copyDistToTemplate" description="This target makes the installer" >
+		<exec program="${toolpath}GetAssemblyInfoForNSIS.exe" >
+			<arg value="${build.dir}\dist\${configuration}\${basename}.exe" />
+			<arg value="src\Installer\version.nsh" />
+		</exec>
+		<exec program="C:\PortableApps\NSISPortableANSI\App\NSIS\MakeNSIS.exe" workingdir="src/Installer" >
+			<arg value="/DCONFIGURATION=${configuration}" />
+			<arg value="ExpensesPortable.nsi" />
+		</exec>
+	</target>
+
+	<target name="deployInstaller" depends="makeInstaller" description="Copy the installer to the drop location" if="${configuration=='Release'}" >
+		<copy todir="${dropLocation}" >
+			<fileset>
+				<include name="${basename}*Setup*" />
+			</fileset>
+		</copy>
+	</target>
+	
+	<target name="transport" description="Remove binaries to prepare for transport">
+		<tstamp />
+		<zip zipfile="${basename}-${tstamp.date}.${tstamp.time}.source.zip">
+			<fileset>
+				<include name="src\**" />
+				<include name="*.build" />
+				<include name="build.number" />
+				<include name="doc\**" />
+				<include name="data\Expenses.s3db" />
+				<include name="data\load\**" />
+				<exclude name="**\obj\**" />
+				<exclude name="**\bin\**" />
+				<exclude name="**\packages\**" />
+				<exclude name="**\.vs\**" />
+				<exclude name="**\icons\**" />
+			</fileset>
+		</zip>
+	</target>
+
 </project>
 
